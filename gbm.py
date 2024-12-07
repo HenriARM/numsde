@@ -42,19 +42,17 @@ def euler_maruyama(S0, r, sigma, N, dW, dt):
 
 
 def plot_solutions(S0, T, dt, St_true, St_em, L, color="b"):
-    # check if St_true is not empty
     if len(St_true) != 0:
         plt.plot(
             np.concatenate(([0], np.arange(dt, T + dt, dt))),
             np.concatenate(([S0], St_true)),
-            "m-",
+            "r-",
             label="True Solution",
-            color="red",
         )
     plt.plot(
         np.linspace(0, T, L + 1),
         np.concatenate(([S0], St_em)),
-        "r--*",
+        "--*",
         label=f"EM dt={dt:.5f}",
         color=color,
     )
