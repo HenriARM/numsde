@@ -11,7 +11,6 @@ def gbm_parameters():
     sigma = 1  # Volatility
     S0 = 1  # Initial value
     T = 1  # Time horizon
-    # N = 2**8  # Number of time steps
     return r, sigma, S0, T
 
 
@@ -56,8 +55,8 @@ def plot_solutions(S0, T, dt, St_true, St_em, L, color="b"):
         label=f"EM dt={dt:.5f}",
         color=color,
     )
-    plt.xlabel("t", fontsize=12)
-    plt.ylabel("S", fontsize=16, rotation=0, horizontalalignment="right")
+    plt.xlabel("Time (t)", fontsize=12)
+    plt.ylabel("Stock (S)", fontsize=16, rotation=0, horizontalalignment="right")
     plt.legend()
 
 
@@ -92,25 +91,30 @@ def main():
     plt.ylabel("Average Error", fontsize=12)
     plt.title("Average Error vs Time Step", fontsize=14)
     plt.grid(True)
-    plt.show()
+    plt.savefig("error_vs_dt.png")
 
-    # Compare EMs with different dt        
+    # Compare EMs with different dt
     N_fix = 2**9
     dt_fix = T / N_fix
     dW_fix, W_fix = brownian_motion(N_fix, dt_fix)
     St_true = true_solution(S0, r, sigma, T, dt_fix, W_fix)
     St_em, L = euler_maruyama(S0, r, sigma, N_fix, dW_fix, dt_fix)
+    plt.figure(figsize=(15, 6))
     plot_solutions(S0, T, dt_fix, St_true, St_em, L)
 
-    for N in n_values[:-1]:
+    colors = ["g", "c", "m", "y", "k"]
+    for i, N in enumerate(n_values[:-2]):
         dt = T / N
         W_coarse = W_fix[:: N_fix // N]  # Subsample Brownian motion
         dW_coarse = np.diff(W_coarse)
         St_em, L = euler_maruyama(S0, r, sigma, N, dW_coarse, dt)
-        # random color
-        color = np.random.rand(3)
+        color = colors[i % len(colors)]
         plot_solutions(S0, T, dt, [], St_em, L, color=color)
-    plt.show()
+    plt.title(
+        "Comparison of Euler-Maruyama Solutions with Different Time Steps", fontsize=14
+    )
+    plt.savefig("em_comparison.png")
+
 
 if __name__ == "__main__":
     main()
