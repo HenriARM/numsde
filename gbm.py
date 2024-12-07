@@ -1,8 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def set_random_seed(seed=100):
     np.random.seed(seed)
+
 
 def gbm_parameters():
     r = 2  # Drift (rate of return)
@@ -12,18 +14,19 @@ def gbm_parameters():
     # N = 2**8  # Number of time steps
     return r, sigma, S0, T
 
+
 def brownian_motion(N, dt):
     dW = np.sqrt(dt) * np.random.randn(N)
     W = np.cumsum(dW)
     return dW, W
 
-def true_solution(S0, r, sigma, T, N, W):
-    dt = T / N
+
+def true_solution(S0, r, sigma, T, dt, W):
     St_true = S0 * np.exp((r - 0.5 * sigma**2) * np.arange(dt, T + dt, dt) + sigma * W)
     return St_true
 
-def euler_maruyama(S0, r, sigma, T, N, dW):
-    dt = T / N
+
+def euler_maruyama(S0, r, sigma, N, dW, dt):
     R = 4
     Dt = R * dt
     L = N // R
@@ -37,43 +40,49 @@ def euler_maruyama(S0, r, sigma, T, N, dW):
 
     return St_em, L
 
-def plot_solutions(S0, T, N, St_true, St_em, L):
-    dt = T / N
-    plt.plot(
-        np.concatenate(([0], np.arange(dt, T + dt, dt))),
-        np.concatenate(([S0], St_true)),
-        "m-",
-        label="True Solution",
-    )
+
+def plot_solutions(S0, T, dt, St_true, St_em, L, color="b"):
+    # check if St_true is not empty
+    if len(St_true) != 0:
+        plt.plot(
+            np.concatenate(([0], np.arange(dt, T + dt, dt))),
+            np.concatenate(([S0], St_true)),
+            "m-",
+            label="True Solution",
+            color="red",
+        )
     plt.plot(
         np.linspace(0, T, L + 1),
         np.concatenate(([S0], St_em)),
         "r--*",
-        label="Euler-Maruyama",
+        label=f"EM dt={dt:.5f}",
+        color=color,
     )
     plt.xlabel("t", fontsize=12)
     plt.ylabel("S", fontsize=16, rotation=0, horizontalalignment="right")
     plt.legend()
-    plt.savefig("gbm.png")
+
 
 def compute_error(St_em, St_true):
     emerr = abs(St_em[-1] - St_true[-1])
     return emerr
 
+
 def main():
     set_random_seed()
     r, sigma, S0, T = gbm_parameters()
     n_values = [2**7, 2**8, 2**9]
-    results = {}
+
+    # Calculate final time average error for different values of dt
     num_runs = 1000
+    results = {}
     for N in n_values:
         dt = T / N
         errors = []
         for _ in range(num_runs):
             dW, W = brownian_motion(N, dt)
-            St_true = true_solution(S0, r, sigma, T, N, W)
-            # TODO: L
-            St_em, L = euler_maruyama(S0, r, sigma, T, N, dW)
+            St_true = true_solution(S0, r, sigma, T, dt, W)
+            St_em, _ = euler_maruyama(S0, r, sigma, N, dW, dt)
             errors.append(compute_error(St_em, St_true))
         avg_error = np.mean(errors)
         results[dt] = avg_error
@@ -87,9 +96,23 @@ def main():
     plt.grid(True)
     plt.show()
 
-    # # plot_solutions(S0, T, N, St_true, St_em, L)
-    # emerr = compute_error(St_em, St_true)
-    # print(f"Error at final time: {emerr}")
+    # Compare EMs with different dt        
+    N_fix = 2**9
+    dt_fix = T / N_fix
+    dW_fix, W_fix = brownian_motion(N_fix, dt_fix)
+    St_true = true_solution(S0, r, sigma, T, dt_fix, W_fix)
+    St_em, L = euler_maruyama(S0, r, sigma, N_fix, dW_fix, dt_fix)
+    plot_solutions(S0, T, dt_fix, St_true, St_em, L)
+
+    for N in n_values[:-1]:
+        dt = T / N
+        W_coarse = W_fix[:: N_fix // N]  # Subsample Brownian motion
+        dW_coarse = np.diff(W_coarse)
+        St_em, L = euler_maruyama(S0, r, sigma, N, dW_coarse, dt)
+        # random color
+        color = np.random.rand(3)
+        plot_solutions(S0, T, dt, [], St_em, L, color=color)
+    plt.show()
 
 if __name__ == "__main__":
     main()
