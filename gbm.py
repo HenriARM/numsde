@@ -9,8 +9,8 @@ def gbm_parameters():
     sigma = 1  # Volatility
     S0 = 1  # Initial value
     T = 1  # Time horizon
-    N = 2**8  # Number of time steps
-    return r, sigma, S0, T, N
+    # N = 2**8  # Number of time steps
+    return r, sigma, S0, T
 
 def brownian_motion(N, dt):
     dW = np.sqrt(dt) * np.random.randn(N)
@@ -62,14 +62,34 @@ def compute_error(St_em, St_true):
 
 def main():
     set_random_seed()
-    r, sigma, S0, T, N = gbm_parameters()
-    dt = T / N
-    dW, W = brownian_motion(N, dt)
-    St_true = true_solution(S0, r, sigma, T, N, W)
-    St_em, L = euler_maruyama(S0, r, sigma, T, N, dW)
-    plot_solutions(S0, T, N, St_true, St_em, L)
-    emerr = compute_error(St_em, St_true)
-    print(f"Error at final time: {emerr}")
+    r, sigma, S0, T = gbm_parameters()
+    n_values = [2**7, 2**8, 2**9]
+    results = {}
+    num_runs = 1000
+    for N in n_values:
+        dt = T / N
+        errors = []
+        for _ in range(num_runs):
+            dW, W = brownian_motion(N, dt)
+            St_true = true_solution(S0, r, sigma, T, N, W)
+            # TODO: L
+            St_em, L = euler_maruyama(S0, r, sigma, T, N, dW)
+            errors.append(compute_error(St_em, St_true))
+        avg_error = np.mean(errors)
+        results[dt] = avg_error
+        print(f"dt = {dt}, Average Error = {avg_error}")
+
+    # Plot results
+    plt.plot(results.keys(), results.values(), marker="o")
+    plt.xlabel("Time Step (dt)", fontsize=12)
+    plt.ylabel("Average Error", fontsize=12)
+    plt.title("Average Error vs Time Step", fontsize=14)
+    plt.grid(True)
+    plt.show()
+
+    # # plot_solutions(S0, T, N, St_true, St_em, L)
+    # emerr = compute_error(St_em, St_true)
+    # print(f"Error at final time: {emerr}")
 
 if __name__ == "__main__":
     main()
