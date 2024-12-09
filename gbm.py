@@ -40,6 +40,35 @@ def euler_maruyama(S0, r, sigma, N, dW, dt):
     return St_em, L
 
 
+# def euler_maruyama(S0, r, sigma, N, dW, dt):
+#     St_em = np.zeros(N)
+#     St_em[0] = S0
+
+#     for i in range(1, N):
+#         St_em[i] = (
+#             St_em[i - 1] 
+#             + r * St_em[i - 1] * dt 
+#             + sigma * St_em[i - 1] * dW[i - 1]
+#         )
+
+#     return St_em
+
+
+def milstein(S0, r, sigma, N, dW, dt):
+    St_mil = np.zeros(N)
+    St_mil[0] = S0
+
+    for i in range(1, N):
+        St_mil[i] = (
+            St_mil[i - 1]
+            + r * St_mil[i - 1] * dt
+            + sigma * St_mil[i - 1] * dW[i - 1]
+            + 0.5 * sigma**2 * St_mil[i - 1] * (dW[i - 1] ** 2 - dt)
+        )
+
+    return St_mil
+
+
 def plot_solutions(S0, T, dt, St_true, St_em, L, color="b"):
     if len(St_true) != 0:
         plt.plot(
@@ -52,11 +81,11 @@ def plot_solutions(S0, T, dt, St_true, St_em, L, color="b"):
         np.linspace(0, T, L + 1),
         np.concatenate(([S0], St_em)),
         "--*",
-        label=f"EM dt={dt:.5f}",
+        label=f"EM",
         color=color,
     )
-    plt.xlabel("Time (t)", fontsize=12)
-    plt.ylabel("Stock (S)", fontsize=16, rotation=0, horizontalalignment="right")
+    plt.xlabel("Time (t)")
+    plt.ylabel("Stock (S)")
     plt.legend()
 
 
@@ -68,7 +97,7 @@ def compute_error(St_em, St_true):
 def main():
     set_random_seed()
     r, sigma, S0, T = gbm_parameters()
-    n_values = [2**7, 2**8, 2**9]
+    n_values = [2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9]
 
     # Calculate final time average error for different values of dt
     num_runs = 1000
@@ -93,6 +122,9 @@ def main():
     plt.grid(True)
     plt.savefig("error_vs_dt.png")
 
+    exit(0)
+
+
     # Compare EMs with different dt
     N_fix = 2**9
     dt_fix = T / N_fix
@@ -102,18 +134,30 @@ def main():
     plt.figure(figsize=(15, 6))
     plot_solutions(S0, T, dt_fix, St_true, St_em, L)
 
-    colors = ["g", "c", "m", "y", "k"]
-    for i, N in enumerate(n_values[:-2]):
-        dt = T / N
-        W_coarse = W_fix[:: N_fix // N]  # Subsample Brownian motion
-        dW_coarse = np.diff(W_coarse)
-        St_em, L = euler_maruyama(S0, r, sigma, N, dW_coarse, dt)
-        color = colors[i % len(colors)]
-        plot_solutions(S0, T, dt, [], St_em, L, color=color)
-    plt.title(
-        "Comparison of Euler-Maruyama Solutions with Different Time Steps", fontsize=14
+    # colors = ["g", "c", "m", "y", "k"]
+    # for i, N in enumerate(n_values[:-2]):
+    #     dt = T / N
+    #     W_coarse = W_fix[:: N_fix // N]  # Subsample Brownian motion
+    #     dW_coarse = np.diff(W_coarse)
+    #     St_em, L = euler_maruyama(S0, r, sigma, N, dW_coarse, dt)
+    #     color = colors[i % len(colors)]
+    #     plot_solutions(S0, T, dt, [], St_em, L, color=color)
+
+    # Milstein method comparison
+    St_mil = milstein(S0, r, sigma, N_fix, dW_fix, dt_fix)
+    plt.plot(
+        np.linspace(0, T, N_fix),
+        St_mil,
+        "y--",
+        label="Milstein",
     )
-    plt.savefig("em_comparison.png")
+
+    plt.title(
+        "Comparison of Euler-Maruyama and Milstein Solutions",
+        fontsize=14,
+    )
+    plt.legend()
+    plt.savefig("em_vs_mil.png")
 
 
 if __name__ == "__main__":
