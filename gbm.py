@@ -25,33 +25,33 @@ def true_solution(S0, r, sigma, T, dt, W):
     return St_true
 
 
-def euler_maruyama(S0, r, sigma, N, dW, dt):
-    R = 4
-    Dt = R * dt
-    L = N // R
-    St_em = np.zeros(L)
-    St_temp = S0
-
-    for j in range(L):
-        Winc = np.sum(dW[R * j : R * (j + 1)])
-        St_temp += Dt * r * St_temp + sigma * St_temp * Winc
-        St_em[j] = St_temp
-
-    return St_em, L
-
-
 # def euler_maruyama(S0, r, sigma, N, dW, dt):
-#     St_em = np.zeros(N)
-#     St_em[0] = S0
+#     R = 4
+#     Dt = R * dt
+#     L = N // R
+#     St_em = np.zeros(L)
+#     St_temp = S0
 
-#     for i in range(1, N):
-#         St_em[i] = (
-#             St_em[i - 1] 
-#             + r * St_em[i - 1] * dt 
-#             + sigma * St_em[i - 1] * dW[i - 1]
-#         )
+#     for j in range(L):
+#         Winc = np.sum(dW[R * j : R * (j + 1)])
+#         St_temp += Dt * r * St_temp + sigma * St_temp * Winc
+#         St_em[j] = St_temp
 
-#     return St_em
+#     return St_em, L
+
+
+def euler_maruyama(S0, r, sigma, N, dW, dt):
+    St_em = np.zeros(N)
+    St_em[0] = S0
+
+    for i in range(1, N):
+        St_em[i] = (
+            St_em[i - 1] 
+            + r * St_em[i - 1] * dt 
+            + sigma * St_em[i - 1] * dW[i - 1]
+        )
+
+    return St_em
 
 
 def milstein(S0, r, sigma, N, dW, dt):
@@ -97,30 +97,40 @@ def compute_error(St_em, St_true):
 def main():
     set_random_seed()
     r, sigma, S0, T = gbm_parameters()
-    n_values = [2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9]
+    n_values = [2**2, 2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9]
 
     # Calculate final time average error for different values of dt
-    num_runs = 1000
-    results = {}
+    num_runs = 10_000
+    em_results = {}
+    mil_results = {}
     for N in n_values:
         dt = T / N
-        errors = []
+        em_errors = []
+        mil_errors = []
         for _ in range(num_runs):
             dW, W = brownian_motion(N, dt)
             St_true = true_solution(S0, r, sigma, T, dt, W)
-            St_em, _ = euler_maruyama(S0, r, sigma, N, dW, dt)
-            errors.append(compute_error(St_em, St_true))
-        avg_error = np.mean(errors)
-        results[dt] = avg_error
-        print(f"dt = {dt}, Average Error = {avg_error}")
+            St_em = euler_maruyama(S0, r, sigma, N, dW, dt)
+            St_mil = milstein(S0, r, sigma, N, dW, dt)
+
+            em_errors.append(compute_error(St_em, St_true))
+            mil_errors.append(compute_error(St_mil, St_true))
+        em_avg_error = np.mean(em_errors)
+        mil_avg_error = np.mean(mil_errors)
+        em_results[dt] = em_avg_error
+        mil_results[dt] = mil_avg_error
+        print(f"dt = {dt}, Average Error = {em_avg_error}")
+        print(f"dt = {dt}, Average Error (Milstein) = {mil_avg_error}")
 
     # Plot results
-    plt.plot(results.keys(), results.values(), marker="o")
+    plt.plot(em_results.keys(), em_results.values(), label="Euler-Maruyama", alpha=0.7, marker="o")
+    plt.plot(mil_results.keys(), mil_results.values(), label="Milstein", alpha=0.7, marker="o")
     plt.xlabel("Time Step (dt)", fontsize=12)
     plt.ylabel("Average Error", fontsize=12)
+    plt.legend()
     plt.title("Average Error vs Time Step", fontsize=14)
     plt.grid(True)
-    plt.savefig("error_vs_dt.png")
+    plt.savefig("em_vs_mil.png")
 
     exit(0)
 
